@@ -6,6 +6,8 @@ describe("FSM module tests", function() {
 	FsmModule.FSMState.call(this);
     };	
 
+    var currentSateContext = {currentState : 'unknown'};
+
     InitState.prototype = Object.create(FsmModule.FSMState.prototype);
     InitState.prototype.constructor = InitState;
 
@@ -87,6 +89,28 @@ describe("FSM module tests", function() {
 
     it("Test FSM definition", function() {
         expect(fsm).not.toBe(null);
+    });
+
+    it("Test FSM switch to correct state 1", function() {
+
+        var switchStateCorrectly = function() {
+	    'use strict';
+
+            fsm.goToState('fsm.state.gameplay');
+        };
+
+        var switchStateCorrectly1 = function() {
+	    'use strict';
+
+            fsm.goToState('fsm.state.pause');
+        };
+
+        expect(switchStateCorrectly).not.toThrow();
+	expect(switchStateCorrectly).not.toThrow();
+
+        expect(switchStateCorrectly1).not.toThrow();
+	expect(switchStateCorrectly1).toThrow();
+
     });
 
 });
