@@ -71,6 +71,8 @@ FSMConfiguration.prototype.validate = function () {
                 }
             }
         }
+	
+
         if(this._transitions.length === 0)
         {
             throw new Error('You need to add at least one transition');

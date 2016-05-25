@@ -1,25 +1,44 @@
 describe("FSM module tests", function() {
     'use strict';
     var FsmModule = require('../index.js');
+
+    var FSMConstants = function()
+    {
+    };
+
+    FSMConstants.StateNames = {
+    	INIT_STATE: 'fsm.state.init',
+    	GAMEPLAY_STATE: 'fsm.state.gameplay',
+    	PAUSE_STATE: 'fsm.state.pause',
+	UNKNOWN_STATE: 'unknown'
+    };
+
+    Object.freeze(FSMConstants.StateNames);
 	
-    var InitState = function() {
-	FsmModule.FSMState.call(this);
+    var InitState = function(context) {
+	FsmModule.FSMState.call(this, FSMConstants.StateNames.INIT_STATE, context);
     };	
 
-    var currentSateContext = {currentState : 'unknown'};
 
     InitState.prototype = Object.create(FsmModule.FSMState.prototype);
     InitState.prototype.constructor = InitState;
 
     InitState.prototype.enter = function () {
     	'use strict';
-        FsmModule.FSMState.prototype.enter.call(this, 'fsm.state.init');
+        FsmModule.FSMState.prototype.enter.call(this);
+	this._data.enterStateResult = this._name;
     };
 
-    var GameplayState = function() {
+    InitState.prototype.exit = function () {
+    	'use strict';
+        FsmModule.FSMState.prototype.exit.call(this);
+	this._data.exitStateResult = this._name;
+    };
+
+    var GameplayState = function(context) {
     	'use strict';
 
-	FsmModule.FSMState.call(this, 'fsm.state.gameplay');
+	FsmModule.FSMState.call(this, FSMConstants.StateNames.GAMEPLAY_STATE, context);
     };	
 
     GameplayState.prototype = Object.create(FsmModule.FSMState.prototype);
@@ -29,13 +48,26 @@ describe("FSM module tests", function() {
     	'use strict';
 
         FsmModule.FSMState.prototype.enter.call(this);
+	this._data.enterStateResult = this._name;
     };
 
-    var PauseState = function() {
+    GameplayState.prototype.exit = function () {
+    	'use strict';
+        FsmModule.FSMState.prototype.exit.call(this);
+	this._data.exitStateResult = this._name;
+    };
+
+    var PauseState = function(context) {
     	'use strict';
 
-	FsmModule.FSMState.call(this, 'fsm.state.pause');
+	FsmModule.FSMState.call(this, FSMConstants.StateNames.PAUSE_STATE, context);
     };	
+
+    PauseState.prototype.exit = function () {
+    	'use strict';
+        FsmModule.FSMState.prototype.enter.call(this);
+	this._data.exitStateResult = this._name;
+    };
 
     PauseState.prototype = Object.create(FsmModule.FSMState.prototype);
     PauseState.prototype.constructor = PauseState;
@@ -43,16 +75,17 @@ describe("FSM module tests", function() {
     PauseState.prototype.enter = function () {
     	'use strict';
 
-        FsmModule.FSMState.prototype.enter.call(this);
+        FsmModule.FSMState.prototype.exit.call(this);
+	this._data.enterStateResult = this._name;
     };
        
-    var TestFSMConfig = function() {
+    var TestFSMConfig = function(context) {
     	'use strict';
 	FsmModule.FSMConfiguration.call(this);
 
-	var initState = new InitState();
-	var gameplayState = new GameplayState();
-	var pauseState = new PauseState();
+	var initState = new InitState(context);
+	var gameplayState = new GameplayState(context);
+	var pauseState = new PauseState(context);
 
 	this.addState(initState);
 	this.addState(gameplayState);
@@ -69,17 +102,54 @@ describe("FSM module tests", function() {
 	this.addTransition(transition);
 
     };
-
     TestFSMConfig.prototype = Object.create(FsmModule.FSMConfiguration.prototype);
     TestFSMConfig.prototype.constructor = TestFSMConfig;
+
+    var TestFSMConfigWrongStates = function(context) {
+    	'use strict';
+	FsmModule.FSMConfiguration.call(this);
+
+	var initState = new InitState(context);
+	var gameplayState = new GameplayState(context);
+
+	this.addState(initState);
+	this.addState(initState);
+	this.addState(gameplayState);
+	this.setInitialState(initState);
+
+	var transition = new FsmModule.FSMTransition(initState, gameplayState);
+	this.addTransition(transition);
+    };
+    TestFSMConfigWrongStates.prototype = Object.create(FsmModule.FSMConfiguration.prototype);
+    TestFSMConfigWrongStates.prototype.constructor = TestFSMConfigWrongStates;
+
+    var TestFSMConfigWrongTransitions = function(context) {
+    	'use strict';
+	FsmModule.FSMConfiguration.call(this);
+
+	var initState = new InitState(context);
+	var gameplayState = new GameplayState(context);
+	var pauseState = new PauseState(context);
+
+	this.addState(initState);
+	this.addState(gameplayState);
+	this.addState(pauseState);
+
+	this.setInitialState(initState);
+    };
+
+    TestFSMConfigWrongTransitions.prototype = Object.create(FsmModule.FSMConfiguration.prototype);
+    TestFSMConfigWrongTransitions.prototype.constructor = TestFSMConfigWrongTransitions;
 
     var fsmFactory = new FsmModule.FSMFactory();
 
     var fsm = null;
+    var currentSateContext = null;
 
     beforeEach(function() {
     	'use strict';
-	fsm = fsmFactory.createFSM('testFSM', new TestFSMConfig());
+	currentSateContext = {enterStateResult : FSMConstants.StateNames.UNKNOWN_STATE, exitStateResult  : FSMConstants.StateNames.UNKNOWN_STATE};
+	fsm = fsmFactory.createFSM('testFSM', new TestFSMConfig(currentSateContext));
     });
 
     afterEach(function() {
@@ -93,23 +163,74 @@ describe("FSM module tests", function() {
 
     it("Test FSM switch to correct state 1", function() {
 
-        var switchStateCorrectly = function() {
+        var switchStateCorrectlyFromInitToGameplay = function() {
+	    'use strict';
+	    expect(currentSateContext.enterStateResult).toEqual(FSMConstants.StateNames.INIT_STATE);
+	    expect(currentSateContext.exitStateResult).toEqual(FSMConstants.StateNames.UNKNOWN_STATE);
+
+            fsm.goToState(FSMConstants.StateNames.GAMEPLAY_STATE);
+
+	    expect(currentSateContext.enterStateResult).toEqual(FSMConstants.StateNames.GAMEPLAY_STATE);
+	    expect(currentSateContext.exitStateResult).toEqual(FSMConstants.StateNames.INIT_STATE);
+
+        };
+
+        var switchStateCorrectlyFromGameplayToGameplay = function() {
 	    'use strict';
 
-            fsm.goToState('fsm.state.gameplay');
+	    expect(currentSateContext.enterStateResult).toEqual(FSMConstants.StateNames.GAMEPLAY_STATE);
+	    expect(currentSateContext.exitStateResult).toEqual(FSMConstants.StateNames.INIT_STATE);
+
+            fsm.goToState(FSMConstants.StateNames.GAMEPLAY_STATE);
+
+	    expect(currentSateContext.enterStateResult).toEqual(FSMConstants.StateNames.GAMEPLAY_STATE);
+	    expect(currentSateContext.exitStateResult).toEqual(FSMConstants.StateNames.GAMEPLAY_STATE);
         };
 
         var switchStateCorrectly1 = function() {
 	    'use strict';
 
-            fsm.goToState('fsm.state.pause');
+            fsm.goToState(FSMConstants.StateNames.PAUSE_STATE);
         };
 
-        expect(switchStateCorrectly).not.toThrow();
-	expect(switchStateCorrectly).not.toThrow();
+        expect(switchStateCorrectlyFromInitToGameplay).not.toThrow();
+	expect(switchStateCorrectlyFromGameplayToGameplay).not.toThrow();
 
         expect(switchStateCorrectly1).not.toThrow();
 	expect(switchStateCorrectly1).toThrow();
+
+    });
+
+    it("Test FSM switch to incorrect state ", function() {
+
+        var switchStateIncorrectly = function() {
+	    'use strict';
+
+            fsm.goToState('---wrong state---');
+        };
+
+
+        expect(switchStateIncorrectly).toThrow();
+
+    });
+
+    it("Test FSM check of incorrect states", function() {
+        var checkFSMCreationWithIncorrectStates = function() {
+	    'use strict';
+            var fsm1 = fsmFactory.createFSM('testFSM1', new TestFSMConfigWrongStates(currentSateContext));
+        };
+
+        expect(checkFSMCreationWithIncorrectStates).toThrow();
+
+    });
+
+    it("Test FSM check of incorrect transitions", function() {
+        var checkFSMCreationWithIncorrectTransitions = function() {
+	    'use strict';
+            var fsm1 = fsmFactory.createFSM('testFSM1', new TestFSMConfigWrongTransitions(currentSateContext));
+        };
+
+        expect(checkFSMCreationWithIncorrectTransitions).toThrow();
 
     });
 

@@ -47,7 +47,7 @@ FSM.prototype.goToState = function (stateName)
 {
     'use strict';
     var newState = this.getStateByName(stateName);
-    if(newState === null)
+    if(newState === null || newState === undefined)
     {
         throw new Error('State ' + stateName + ' did not registred in FSM(' + this._name + ')');
     }
